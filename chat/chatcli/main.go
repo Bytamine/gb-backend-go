@@ -30,7 +30,7 @@ func main() {
 	}(conn)
 
 	// Send nickname to server
-	_, err = fmt.Fprintf(conn, nickname)
+	_, err = fmt.Fprint(conn, nickname)
 	if err != nil {
 		log.Fatal(err)
 	}
