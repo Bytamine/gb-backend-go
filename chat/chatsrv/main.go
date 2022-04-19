@@ -2,9 +2,13 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"time"
 )
 
 type client chan<- string
@@ -16,7 +20,11 @@ var (
 )
 
 func main() {
-	listener, err := net.Listen("tcp", "localhost:8001")
+	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt)
+	cfg := net.ListenConfig{
+		KeepAlive: time.Minute,
+	}
+	listener, err := cfg.Listen(ctx, "tcp", "localhost:8001")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -36,25 +44,34 @@ func handleConn(conn net.Conn) {
 	ch := make(chan string)
 	go clientWriter(conn, ch)
 
-	who := conn.RemoteAddr().String()
+	// Get the client's nickname
+	input := bufio.NewScanner(conn)
+	input.Scan()
+	who := input.Text()
+
 	ch <- "You are " + who
 	messages <- who + " has arrived"
 	entering <- ch
 
 	log.Println(who + " has arrived")
 
-	input := bufio.NewScanner(conn)
 	for input.Scan() {
 		messages <- who + ": " + input.Text()
 	}
 	leaving <- ch
 	messages <- who + " has left"
-	conn.Close()
+	err := conn.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func clientWriter(conn net.Conn, ch <-chan string) {
 	for msg := range ch {
-		fmt.Fprintln(conn, msg)
+		_, err := fmt.Fprintln(conn, msg)
+		if err != nil {
+			log.Print(err)
+		}
 	}
 }
 
