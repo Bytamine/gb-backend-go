@@ -13,10 +13,21 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer conn.Close()
+	defer func(conn net.Conn) {
+		err := conn.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(conn)
 	go func() {
-		io.Copy(os.Stdout, conn)
+		_, err := io.Copy(os.Stdout, conn)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}()
-	io.Copy(conn, os.Stdin) // until you send ^Z
+	_, err = io.Copy(conn, os.Stdin)
+	if err != nil {
+		log.Fatal(err)
+	} // until you send ^Z
 	fmt.Printf("%s: exit", conn.LocalAddr())
 }

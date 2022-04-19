@@ -49,12 +49,18 @@ func handleConn(conn net.Conn) {
 	}
 	leaving <- ch
 	messages <- who + " has left"
-	conn.Close()
+	err := conn.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func clientWriter(conn net.Conn, ch <-chan string) {
 	for msg := range ch {
-		fmt.Fprintln(conn, msg)
+		_, err := fmt.Fprintln(conn, msg)
+		if err != nil {
+			log.Print(err)
+		}
 	}
 }
 
